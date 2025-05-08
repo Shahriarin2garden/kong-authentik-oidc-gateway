@@ -1,0 +1,52 @@
+version: '3.8'
+services:
+  kong-migrations:
+    image: kong:3.4
+    entrypoint: ["kong", "migrations", "bootstrap"]
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: "/usr/local/kong/declarative/kong.yml"
+    volumes:
+      - ./kong/kong.yml:/usr/local/kong/declarative/kong.yml
+
+  kong:
+    image: kong:3.4
+    depends_on:
+      - kong-migrations
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+      - "8001:8001"
+      - "8444:8444"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: "/usr/local/kong/declarative/kong.yml"
+      KONG_PROXY_LISTEN: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
+    volumes:
+      - ./kong/kong.yml:/usr/local/kong/declarative/kong.yml
+
+  authentik:
+    image: authentik/authentik:2025.1.0
+    environment:
+      AUTHENTIK_SECRET_KEY: "changeme"
+      AUTHENTIK_SYSTEM_ADMIN_PASSWORD: "adminpass"
+    ports:
+      - "8002:8000"
+    volumes:
+      - authentik_data:/data
+
+  service-a:
+    image: hashicorp/http-echo
+    command: ["-text=Hello from Service A"]
+    ports:
+      - "9001:5678"
+
+  service-b:
+    image: hashicorp/http-echo
+    command: ["-text=Hello from Service B"]
+    ports:
+      - "9002:5678"
+
+volumes:
+  authentik_data:
